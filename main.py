@@ -8,8 +8,9 @@ while True:
     print("2. Show expenses")
     print("3. Exit")
     print("4. Summary")
+    print("5. Filter by category")
     
-    option = input("Enter your option(1/2/3/4): ")
+    option = input("Enter your option(1/2/3/4/5): ")
 
     if option == "1" :
         print("\nADD INCOME/EXPENSES")
@@ -89,6 +90,17 @@ while True:
         print("TOTAL EXPENSES",total_expense)
         print("Balance =",total_income-total_expense)
 
+    elif option == "5":
+        print("Filter By Category")
+        filter_cat = input("Enter Category: ").strip().lower()
+
+        found = False
+        for expense in expenses:
+            if expense["category"].lower() ==filter_cat:
+                print((f" {expense['date']:<12} {expense['type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
+                found = True
+        if not found:
+            print("No expenses found for the category:", filter_cat)
 
     else:
         print("wrong input")
