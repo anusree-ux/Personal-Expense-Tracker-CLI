@@ -9,8 +9,11 @@ while True:
     print("3. Exit")
     print("4. Summary")
     print("5. Filter by category")
+    print("6. Filter by date")
+
+
     
-    option = input("Enter your option(1/2/3/4/5): ")
+    option = input("Enter your option(1/2/3/4/5/6): ")
 
     if option == "1" :
         print("\nADD INCOME/EXPENSES")
@@ -101,6 +104,40 @@ while True:
                 found = True
         if not found:
             print("No expenses found for the category:", filter_cat)
+    
+    elif option == "6":
+        start_date = input("enter start date:")
+        try:
+            start_object = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        except ValueError:
+            print("invalid date format")
+            continue
+
+        end_date = input("enter end date: ")
+        try:
+            end_object = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+        except ValueError:
+            print("invalid date format")
+            continue
+        
+        if start_object > end_object: 
+            print("invalid date range")
+            continue
+
+        found  =  False
+
+        for expense in expenses:
+            transaction_date = datetime.datetime.strptime(expense["date"], "%Y-%m-%d")
+            
+
+            if start_object <= transaction_date <= end_object:
+                print((f" {expense['date']:<12} {expense['type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
+                found = True
+
+        if not found:
+            print("No expense in this data range")
+
+
 
     else:
         print("wrong input")
