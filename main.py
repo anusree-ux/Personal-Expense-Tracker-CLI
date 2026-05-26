@@ -2,8 +2,8 @@ import datetime
 import csv
 
 FILENAME = "transactions.csv" 
-FIELDNAMES = ["date", "type", "category", "amount", "description"]
-expenses: list[dict] = []
+FIELDNAMES = ["date", "transaction_type", "category", "amount", "description"]
+transactions: list[dict] = []
 
 try:
     with open(FILENAME, "r", newline="") as file:
@@ -11,7 +11,7 @@ try:
 
         for row in reader:
             row["amount"] = float(row["amount"])
-            expenses.append(row)
+            transactions.append(row)
 
 except FileNotFoundError:
     print("No existing transactions found. Starting with an empty list.")
@@ -24,16 +24,17 @@ while True:
     print("4. Summary")
     print("5. Filter by category")
     print("6. Filter by date")
+    print("7. Export Monthly report")
 
 
     
-    option = input("Enter your option(1/2/3/4/5/6): ")
+    option = input("Enter your option(1/2/3/4/5/6/7): ")
 
     if option == "1" :
         print("\nADD INCOME/EXPENSES")
 
-        type = input("Enter type (income/expense): ").lower()
-        if type not in ["income","expense"]:
+        transaction_type = input("Enter type (income/expense): ").strip().lower()
+        if transaction_type not in ["income","expense"]:
             print("invalid type")
             continue
 
@@ -59,13 +60,13 @@ while True:
         description = input("Enter description: ")
 
         expense = {
-            "date": date,
-            "type": type,
+            "date": date_object.strftime("%Y-%m-%d"),
+            "transaction_type": transaction_type,
             "category": category,
             "amount": amount,
             "description": description
         }
-        expenses.append(expense)
+        transactions.append(expense)
 
         with open(FILENAME, "a", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=FIELDNAMES )
@@ -80,13 +81,13 @@ while True:
         
     elif option == "2":
         print("\nTotal expenses")
-        if len(expenses)==0:
+        if len(transactions)==0:
             print("No expense added")
         else:
             print("{:<5} {:<12} {:<12} {:<15} {:>10} {:<20}".format("No", "Date", "Type", "Category", "Amount", "Description"))
 
-            for i,expense in enumerate(expenses, start=1):
-                print(f"{i:<5} {expense['date']:<12} {expense['type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}")
+            for i,expense in enumerate(transactions, start=1):
+                print(f"{i:<5} {expense['date']:<12} {expense['transaction_type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}")
 
     elif option == "3":
         print("Exiting...")
@@ -103,11 +104,11 @@ while True:
         total_income=0
         total_expense=0
 
-        for expense in expenses:
+        for expense in transactions:
             if expense["date"].startswith(month):
-                if expense["type"] == "income":
+                if expense["transaction_type"] == "income":
                     total_income += expense["amount"]
-                elif expense["type"] == "expense":
+                elif expense["transaction_type"] == "expense":
                     total_expense += expense["amount"]
 
         
@@ -121,9 +122,9 @@ while True:
         filter_cat = input("Enter Category: ").strip().lower()
 
         found = False
-        for expense in expenses:
+        for expense in transactions:
             if expense["category"].lower() ==filter_cat:
-                print((f" {expense['date']:<12} {expense['type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
+                print((f" {expense['date']:<12} {expense['transaction_type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
                 found = True
         if not found:
             print("No expenses found for the category:", filter_cat)
@@ -149,18 +150,47 @@ while True:
 
         found  =  False
 
-        for expense in expenses:
+        for expense in transactions:
             transaction_date = datetime.datetime.strptime(expense["date"], "%Y-%m-%d")
             
 
             if start_object <= transaction_date <= end_object:
-                print((f" {expense['date']:<12} {expense['type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
+                print((f" {expense['date']:<12} {expense['transaction_type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
                 found = True
 
         if not found:
             print("No expense in this data range")
+  
+    elif option == "7":
+        print("Export monthly report to CSV")
+
+        month = input("Enter month(YYYY-MM): ")
+        try:
+            month_object = datetime.datetime.strptime(month, "%Y-%m")
+        except ValueError:
+            print("invalid month format")
+            continue
+
+        report_filename = "report_" + month + ".csv"
+
+        with open(report_filename, "w", newline="") as file:
+            writer  = csv.DictWriter(file,fieldnames=FIELDNAMES)
+
+            writer.writeheader()
+
+            found = False
+
+            for expense in transactions:
+                if expense["date"].startswith((month)):
+                    writer.writerow(expense)
+                    found = True
+            if found :
+                print("Report exported:", report_filename)
+            else:
+                print("No transaction founf for this month")
 
 
+                  
 
     else:
         print("wrong input")
