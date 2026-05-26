@@ -1,6 +1,20 @@
 import datetime  
+import csv
 
+FILENAME = "transactions.csv" 
+FIELDNAMES = ["date", "type", "category", "amount", "description"]
 expenses: list[dict] = []
+
+try:
+    with open(FILENAME, "r", newline="") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            row["amount"] = float(row["amount"])
+            expenses.append(row)
+
+except FileNotFoundError:
+    print("No existing transactions found. Starting with an empty list.")
 
 while True:
     print("\nEXPENSE TRACKER")
@@ -31,7 +45,7 @@ while True:
             continue
 
 
-        category = input("Enter category :")
+        category = input("Enter category :").strip().lower()
 
         try:
             amount = float(input("Enter amount: "))
@@ -52,6 +66,15 @@ while True:
             "description": description
         }
         expenses.append(expense)
+
+        with open(FILENAME, "a", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=FIELDNAMES )
+            
+            if file.tell() == 0:
+                writer.writeheader()
+            writer.writerow(expense)
+
+            print("Transaction saved to CSV")
 
         print("Expense added successfully")
         
