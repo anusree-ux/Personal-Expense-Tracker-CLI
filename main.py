@@ -3,15 +3,43 @@ import csv
 
 FILENAME = "transactions.csv" 
 FIELDNAMES = ["date", "transaction_type", "category", "amount", "description"]
-transactions: list[dict] = []
+
+class Transaction:
+    def __init__(self, date: str, transaction_type: str, category: str, amount: float, description: str):
+            self.date = date
+            self.transaction_type = transaction_type
+            self.category = category
+            self.amount = amount
+            self.description = description
+    
+    def to_dict(self):
+        return{
+            "date": self.date,
+            "transaction_type": self.transaction_type,
+            "category": self.category,
+            "amount": self.amount,
+            "description" : self.description
+        }
+
+
+
+
+
+transactions: list[Transaction] = []
 
 try:
     with open(FILENAME, "r", newline="") as file:
         reader = csv.DictReader(file)
 
         for row in reader:
-            row["amount"] = float(row["amount"])
-            transactions.append(row)
+            transaction = Transaction(
+                row["date"],
+                row["transaction_type"],
+                row["category"],
+                float(row["amount"]),
+                row["description"]
+            )
+            transactions.append(transaction)
 
 except FileNotFoundError:
     print("No existing transactions found. Starting with an empty list.")
@@ -59,13 +87,13 @@ while True:
         
         description = input("Enter description: ")
 
-        expense = {
-            "date": date_object.strftime("%Y-%m-%d"),
-            "transaction_type": transaction_type,
-            "category": category,
-            "amount": amount,
-            "description": description
-        }
+        expense = Transaction(
+            date_object.strftime("%Y-%m-%d"),
+            transaction_type,
+            category,
+            amount,
+            description
+        )
         transactions.append(expense)
 
         with open(FILENAME, "a", newline="") as file:
@@ -73,7 +101,7 @@ while True:
             
             if file.tell() == 0:
                 writer.writeheader()
-            writer.writerow(expense)
+            writer.writerow(expense.to_dict())
 
             print("Transaction saved to CSV")
 
@@ -87,7 +115,7 @@ while True:
             print("{:<5} {:<12} {:<12} {:<15} {:>10} {:<20}".format("No", "Date", "Type", "Category", "Amount", "Description"))
 
             for i,expense in enumerate(transactions, start=1):
-                print(f"{i:<5} {expense['date']:<12} {expense['transaction_type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}")
+                print(f"{i:<5} {expense.date:<12} {expense.transaction_type:<12} {expense.category:<15} {expense.amount:>10.2f} {expense.description:<20}")
 
     elif option == "3":
         print("Exiting...")
@@ -105,11 +133,11 @@ while True:
         total_expense=0
 
         for expense in transactions:
-            if expense["date"].startswith(month):
-                if expense["transaction_type"] == "income":
-                    total_income += expense["amount"]
-                elif expense["transaction_type"] == "expense":
-                    total_expense += expense["amount"]
+            if expense.date.startswith(month):
+                if expense.transaction_type == "income":
+                    total_income += expense.amount
+                elif expense.transaction_type == "expense":
+                    total_expense += expense.amount
 
         
         print("Month - ",month)
@@ -123,8 +151,8 @@ while True:
 
         found = False
         for expense in transactions:
-            if expense["category"].lower() ==filter_cat:
-                print((f" {expense['date']:<12} {expense['transaction_type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
+            if expense.category.lower() ==filter_cat:
+                print((f" {expense.date:<12} {expense.transaction_type:<12} {expense.category:<15} {expense.amount:>10.2f} {expense.description:<20}"))
                 found = True
         if not found:
             print("No expenses found for the category:", filter_cat)
@@ -151,11 +179,11 @@ while True:
         found  =  False
 
         for expense in transactions:
-            transaction_date = datetime.datetime.strptime(expense["date"], "%Y-%m-%d")
+            transaction_date = datetime.datetime.strptime(expense.date, "%Y-%m-%d")
             
 
             if start_object <= transaction_date <= end_object:
-                print((f" {expense['date']:<12} {expense['transaction_type']:<12} {expense['category']:<15} {expense['amount']:>10.2f} {expense['description']:<20}"))
+                print((f" {expense.date:<12} {expense.transaction_type:<12} {expense.category:<15} {expense.amount:>10.2f} {expense.description:<20}"))
                 found = True
 
         if not found:
@@ -181,16 +209,13 @@ while True:
             found = False
 
             for expense in transactions:
-                if expense["date"].startswith((month)):
-                    writer.writerow(expense)
+                if expense.date.startswith((month)):
+                    writer.writerow(expense.to_dict())
                     found = True
             if found :
                 print("Report exported:", report_filename)
             else:
-                print("No transaction founf for this month")
-
-
-                  
-
+                print("No transaction found for this month")
+       
     else:
         print("wrong input")
