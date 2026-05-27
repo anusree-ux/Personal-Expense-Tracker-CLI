@@ -1,2 +1,3 @@
 date,transaction_type,category,amount,description
 2026-05-05,income,food,120.0,lunch
+2026-03-03,income,food,2423.0,dinner

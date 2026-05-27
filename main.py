@@ -12,37 +12,125 @@ class Transaction:
             self.amount = amount
             self.description = description
     
-    def to_dict(self):
-        return{
+    def to_dict(self) -> dict[str, str | float]:
+        return {
             "date": self.date,
             "transaction_type": self.transaction_type,
             "category": self.category,
             "amount": self.amount,
-            "description" : self.description
+            "description": self.description
         }
 
 
+class Tracker:
+    def __init__(self):
+        self.transactions: list[Transaction] = []
 
+    def add_transaction(self, transaction: Transaction):
+        self.transactions.append(transaction)
+    
+    def save_transaction(self,transaction:Transaction):
+        with open(FILENAME, "a", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=FIELDNAMES )
+            
+            if file.tell() == 0:
+                writer.writeheader()
+            writer.writerow(transaction.to_dict())
 
+            print("Transaction saved to CSV")
 
-transactions: list[Transaction] = []
+    def load_transactions(self):
+        try:
+            with open(FILENAME, "r", newline="") as file:
+                reader = csv.DictReader(file)
 
-try:
-    with open(FILENAME, "r", newline="") as file:
-        reader = csv.DictReader(file)
+                for row in reader:
+                    transaction = Transaction(
+                        row["date"],
+                        row["transaction_type"],
+                        row["category"],
+                        float(row["amount"]),
+                        row["description"]
+                    )
+                    self.add_transaction(transaction)
 
-        for row in reader:
-            transaction = Transaction(
-                row["date"],
-                row["transaction_type"],
-                row["category"],
-                float(row["amount"]),
-                row["description"]
+        except FileNotFoundError:
+            print("No existing transactions found. Starting with an empty list.")
+
+    def get_monthly_summary(self,month: str):
+        total_income=0
+        total_expense=0
+
+        for transaction in self.transactions:
+            if transaction.date.startswith(month):
+                if transaction.transaction_type == "income":
+                    total_income += transaction.amount
+                elif transaction.transaction_type == "expense":
+                    total_expense += transaction.amount
+        
+        balance = total_income - total_expense
+        return total_income, total_expense, balance
+    
+    def filter_by_category(self, category: str):
+        matches: list[Transaction] = []
+
+        for transaction in self.transactions:
+            if transaction.category.lower() == category.lower():
+                matches.append(transaction)
+
+        return matches
+    
+    def filter_by_date_range(
+        self,
+        start_date: datetime.datetime,
+        end_date: datetime.datetime
+    ) -> list[Transaction]:
+        matches: list[Transaction] = []
+
+        for transaction in self.transactions:
+            transaction_date = datetime.datetime.strptime(transaction.date, "%Y-%m-%d")
+
+            if start_date <= transaction_date <= end_date:
+                matches.append(transaction)
+
+        return matches
+    
+    def export_monthly_report(self, month: str):
+        report_filename = f"report_{month}.csv"
+        found = False
+
+        with open(report_filename, "w", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=FIELDNAMES)
+            writer.writeheader()
+
+            for transaction in self.transactions:
+                if transaction.date.startswith(month):
+                    writer.writerow(transaction.to_dict())
+                    found = True
+
+        return found, report_filename
+
+def print_transactions(transactions: list[Transaction]):
+    if len(transactions) == 0:
+        print("No transactions found")
+    else:
+        print("{:<5} {:<12} {:<12} {:<15} {:>10} {:<20}".format(
+            "No", "Date", "Type", "Category", "Amount", "Description"
+        ))
+
+        for i, transaction in enumerate(transactions, start=1):
+            print(
+                f"{i:<5} "
+                f"{transaction.date:<12} "
+                f"{transaction.transaction_type:<12} "
+                f"{transaction.category:<15} "
+                f"{transaction.amount:>10.2f} "
+                f"{transaction.description:<20}"
             )
-            transactions.append(transaction)
 
-except FileNotFoundError:
-    print("No existing transactions found. Starting with an empty list.")
+
+tracker = Tracker()
+tracker.load_transactions()
 
 while True:
     print("\nEXPENSE TRACKER")
@@ -94,28 +182,13 @@ while True:
             amount,
             description
         )
-        transactions.append(expense)
-
-        with open(FILENAME, "a", newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=FIELDNAMES )
-            
-            if file.tell() == 0:
-                writer.writeheader()
-            writer.writerow(expense.to_dict())
-
-            print("Transaction saved to CSV")
-
+        tracker.add_transaction(expense)
+        tracker.save_transaction(expense)
         print("Expense added successfully")
         
     elif option == "2":
-        print("\nTotal expenses")
-        if len(transactions)==0:
-            print("No expense added")
-        else:
-            print("{:<5} {:<12} {:<12} {:<15} {:>10} {:<20}".format("No", "Date", "Type", "Category", "Amount", "Description"))
-
-            for i,expense in enumerate(transactions, start=1):
-                print(f"{i:<5} {expense.date:<12} {expense.transaction_type:<12} {expense.category:<15} {expense.amount:>10.2f} {expense.description:<20}")
+        print("\nAll transactions")
+        print_transactions(tracker.transactions)
 
     elif option == "3":
         print("Exiting...")
@@ -128,34 +201,20 @@ while True:
         except ValueError:
             print("invalid month format")
             continue
-
-        total_income=0
-        total_expense=0
-
-        for expense in transactions:
-            if expense.date.startswith(month):
-                if expense.transaction_type == "income":
-                    total_income += expense.amount
-                elif expense.transaction_type == "expense":
-                    total_expense += expense.amount
-
         
-        print("Month - ",month)
-        print("TOTAL INCOME",total_income)
-        print("TOTAL EXPENSES",total_expense)
-        print("Balance =",total_income-total_expense)
+        total_income, total_expense, balance = tracker.get_monthly_summary(month)
+        print("Month -", month)
+        print(f"TOTAL INCOME: {total_income:.2f}")
+        print(f"TOTAL EXPENSES: {total_expense:.2f}")
+        print(f"Balance: {balance:.2f}")
+
 
     elif option == "5":
         print("Filter By Category")
         filter_cat = input("Enter Category: ").strip().lower()
 
-        found = False
-        for expense in transactions:
-            if expense.category.lower() ==filter_cat:
-                print((f" {expense.date:<12} {expense.transaction_type:<12} {expense.category:<15} {expense.amount:>10.2f} {expense.description:<20}"))
-                found = True
-        if not found:
-            print("No expenses found for the category:", filter_cat)
+        matches = tracker.filter_by_category(filter_cat)
+        print_transactions(matches)
     
     elif option == "6":
         start_date = input("enter start date:")
@@ -176,18 +235,10 @@ while True:
             print("invalid date range")
             continue
 
-        found  =  False
+        
+        matches = tracker.filter_by_date_range(start_object, end_object)
+        print_transactions(matches)
 
-        for expense in transactions:
-            transaction_date = datetime.datetime.strptime(expense.date, "%Y-%m-%d")
-            
-
-            if start_object <= transaction_date <= end_object:
-                print((f" {expense.date:<12} {expense.transaction_type:<12} {expense.category:<15} {expense.amount:>10.2f} {expense.description:<20}"))
-                found = True
-
-        if not found:
-            print("No expense in this data range")
   
     elif option == "7":
         print("Export monthly report to CSV")
@@ -199,23 +250,12 @@ while True:
             print("invalid month format")
             continue
 
-        report_filename = "report_" + month + ".csv"
+        found, report_filename = tracker.export_monthly_report(month)
 
-        with open(report_filename, "w", newline="") as file:
-            writer  = csv.DictWriter(file,fieldnames=FIELDNAMES)
-
-            writer.writeheader()
-
-            found = False
-
-            for expense in transactions:
-                if expense.date.startswith((month)):
-                    writer.writerow(expense.to_dict())
-                    found = True
-            if found :
-                print("Report exported:", report_filename)
-            else:
-                print("No transaction found for this month")
+        if found:
+            print("Report exported:", report_filename)
+        else:
+            print("No transaction found for this month")
        
     else:
         print("wrong input")
